@@ -66,4 +66,15 @@ TLD：四个顶级域
 ### 确定公共DNS的出口IP
 作者需要确认联系他们权威服务器的源ip是否属于公共DNS服务器的，这个源ip也就是出口ip
 这个出口IP是单播地址通常与他的任播地址不匹配，这也很好理解，如果用的是任播地址，将会发一堆包，这样会浪费大量的资源。所以作者需要搞清楚这个公共DNS的出口IP是啥。   
-过去的研究有说通过IP WHOIS数据和公开信息，可是这些不够准确，作者提出了一个利用DNS的PTR和SOA记录的方法，作者的方法基于一个假设就是说相比于分散的IP地址，公共DNS更倾向于用同一个网段里的IP。为了便于管理，IP地址的身份信息会由网络管理员嵌入在PTR极了和SOA记录里。测了Alexa前12的DNS解析器都是对的，比如说是谷歌的公共DNS的出口IP的反向查询都叫dns-admin.google.com
+过去的研究有说通过IP WHOIS数据和公开信息，可是这些不够准确，作者提出了一个利用DNS的PTR和SOA记录的方法，作者的方法基于一个假设就是说相比于分散的IP地址，公共DNS更倾向于用同一个网段里的IP。为了便于管理，IP地址的身份信息会由网络管理员嵌入在PTR极了和SOA记录里。测了Alexa前12的DNS解析器都是对的，比如说是谷歌的公共DNS的出口IP的反向查询都叫dns-admin.google.com   
+SOA记录：起始授权机构记录，表示此域名的权威解析服务器地址   
+PTR记录：反向DNS查询
+作者的权威服务器收到一个IP后，首先对其进行反向DNS查询，收到一个响应域名，然后递归的查询响应域名的SOA记录（5次），如果这里头有特定的二级域（opendns.com）。就认为这个是公共DNSopendns的出口IP   
+就比如说45.76.11.166的反向查询是hivecast-234-usewr.as15135.net，hivecast-234-usewr.as15135.net的SOA是ns0.dynamicnetworkservic es.net，ns0.dynamicnetworkservic es.net里面有dmnamic，所以说dynamic DNS的出口ip就是45.76.11.166   
+相比于IP WHOIS的方法，这个方法可以发现新的出口AS 
+## 数据集
+数据集的格式   ![image](https://user-images.githubusercontent.com/49114842/203928515-17bb4c8a-c201-4b9f-b77b-92145ba6c50a.png)   
+作者和一家安全公司合作，利用遍布全球的客户端发起查询。   
+   ![image](https://user-images.githubusercontent.com/49114842/203962887-057c4c18-ee77-4060-af90-43c3f0abea11.png)   
+   流程如图
+# TCP DNS拦截
