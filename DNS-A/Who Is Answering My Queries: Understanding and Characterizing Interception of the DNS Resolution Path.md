@@ -78,3 +78,74 @@ PTR记录：反向DNS查询
    ![image](https://user-images.githubusercontent.com/49114842/203962887-057c4c18-ee77-4060-af90-43c3f0abea11.png)   
    流程如图
 # TCP DNS拦截
+![image](https://user-images.githubusercontent.com/49114842/204079277-b4b00286-57cd-4baf-ac10-25b945874945.png)
+   其中有198（2691 7.36%）的客户端遭到了DNS拦截，其中有158的拦截是查询谷歌公共DNS时发生的
+   ![image](https://user-images.githubusercontent.com/49114842/204079442-7555f515-e0d0-4ad2-8524-cedef3cadb0b.png)
+   上图说明了发往谷歌的被拦截的请求所属AS，通过观察前20不难发现，其中大多数都是单一的类型，即要么都是请求复制，要么都是请求重定向，这说明在每个AS里都有着统一的拦截规则。可以看出在着158个发往谷歌被拦截的AS里有82个AS有超过90%的DNS查询包被拦截了，相比之下有50个AS以低于0.5的比例被拦截
+   ### 国家
+   158个AS里头设计了41个国家，其中俄罗斯的最多占有44个AS，美国占了15个，印尼占了8个，巴西和印度各占7个
+   ### 被针对的公共DNS解析器
+   有一些AS里，仅拦截发送到特定公共DNS服务的查询，虽然大多数AS没有，但作者发现有2个AS（AS43554和AS15774）专门拦截到Google DNS的流量。 
+![image](https://user-images.githubusercontent.com/49114842/204080595-38a652c8-4912-49c8-9abd-71ec072b7344.png)
+### 替代解析器
+![image](https://user-images.githubusercontent.com/49114842/204085255-ed29986e-1a80-4967-a574-ff84f9a24c6d.png)
+   最常见的替代解析器
+### 问题AS的排名
+作者本以为DNS劫持会发生在声誉较低的AS中，但是结果表明剩余好的AS同样存在拦截
+![image](https://user-images.githubusercontent.com/49114842/204085376-752c674d-9499-4666-ace2-5deaf93fd73c.png)
+## 总的调查结果
+· 发现了198个AS存在DNS拦截。作者调查的公共DNS服务器，来自客户端的基于TCP的DNS请求中有0.66%遭到了拦截，较高声誉的AS和较低的AS都存在DNS拦截都存在拦截   
+· 拦截里头主要是请求重定向和请求复制，因为直接相应的那种拦截容易被发现
+· 在大部分的top20AS里都只发现1种拦截类型，而且一个拦截器可以完全拦截发送到指定的公共DNS的DNS流量
+# TCP/UDP DNS拦截分析(中国范围的分析)
+## 拦截特征
+### 传输协议
+相比TCP，UDP更容易被拦截，发向Google DNS，拦截量UDP（27.9%）>TCP（7.3%）
+### 目标公共DNS服务
+无论名气高低，DNS拦截均会发生，拦截率与名气高低成正相关 例如，基于UDP，Google DNS占27.9%，EDU DNS 占9.8%	
+### RR类型
+A类型请求拦截率略高些，实验数据表明：在请求复制拦截中，客户端没有从正常路径（in-band）接收到CNAME、NS、MX类型请求的响应，推测：路径设备（on-path devices）在请求复制时阻塞了来自公共DNS服务这三种RR类型的响应
+![image](https://user-images.githubusercontent.com/49114842/204090613-d028ced7-05c7-4a07-ae79-1c67f536685b.png)
+### TLD
+TLD对于拦截类型没有影响
+![image](https://user-images.githubusercontent.com/49114842/204090661-62afc357-59c9-442f-a14d-cecdf05fdae7.png)   
+### 案例
+356个AS，有问题数61（17.13%）  前五名属于三大运营商，中国移动占比最高   替代解析器可能位于同一运营商的其他AS中   ![image](https://user-images.githubusercontent.com/49114842/204090692-2737ddb6-8575-41b7-8919-734b32690903.png)   
+## DNS查询性能：以RTT作为性能指标
+![image](https://user-images.githubusercontent.com/49114842/204090910-5cbddb04-2467-416a-8ed6-4c86f2684edf.png)   
+TCP因需创建连接，性能提升升不明显   
+请求复制比正常解析性能更好   
+请求重定向VS本地解析器性能相似   
+
+  请求复制：以Google	 DNS为例，分别计算通过in-band和out-of-band到达权威服务器的时间，实验结果显示out-of-band的84.63%DNS请求比in-band更快到达权威服务器
+  下图是发向Google	 DNS的复制请求量的前10名AS。纵坐标若为正，in-band请求花费是时间更长，说明请求复制到达的更快。
+  实验结果：来自大部分AS的复制请求可以更快到达，但AS4812（中国联通）所有out-of-band请求都比in-band到达的慢。原因（1）该AS中网络设备实现问题；或者（2）out-of-band请求的转发路径更长
+  ![image](https://user-images.githubusercontent.com/49114842/204091360-de26187b-9819-4d2b-bbd0-083cecbe5cea.png)   
+## 篡改响应
+### 修改TTL
+（a）是TTL不同的ECDF图，横坐标为正时，表示客户端处TTL比权威服务器的小,可以发现20%的TTL被修改，而且大部分被改小
+(b)中每一个点代表一个响应，发现TTL喜欢被改为如1800,3600,7200等值
+![image](https://user-images.githubusercontent.com/49114842/204091670-9b9e50f0-1200-44bf-bd2d-1bb43fd469e4.png)
+### 修改DNS
+通过观察少量数据，发现客户端接收的响应中DNS记录也会被修改（包括A,AAAA,MX）
+A,AAAA的情况占大多数，除了被改为私有地址（可能是流量网关），还发现为了非法流量盈利进行DNS劫持。例如来自Google公共DNS的8个响应（AS9808中）被指向推广中国移动APP的Web入口。
+对于MX记录，可能是配置错误，发现了Saudi	 Arabian的一个邮件服务器响应了AS25019（属于Saudi联通公司JSC）中的客户端
+![image](https://user-images.githubusercontent.com/49114842/204091814-a2e7c915-e4b7-4d5d-af8c-2857d3f9fd85.png)
+## 拦截动机
+发现可支持DNS拦截的供应商
+• 三家知名路由器制造商，如Cisco、Panabit、Shenxingzhe   
+• 三家公司：ZDNS	,Haomiao,	Ericsson	   
+• 一家软件平台：DNS	traffic	redirecting	system	of	Xinfeng   
+多种DNS流量拦截方法曾被公开发表，例如中国移动ᨀ出了一种在骨干网络中复制out-of-band DNS请求，并使用本地DNS解析器（local DNS resolver）响应客户端，该方法类似请求复制拦截
+### 动机
+**是为了提高DNS安全么**？供应商声称使用可信的本地DNS服务器比外网不可信的DNS服务器，更能减少被劫持的可能性，但是这带来了道德问题及违背了用户与其偏爱的DNS解析器之间的信任关系；根据测试结果发现，越有名气并提供安全部署的公共DNS服务，被拦截的概率越高；   
+结论：使用DNS拦截与提高DNS安全是冲突的，因为out-of-band公共DNS	服务不能与不受信任的解析器等同对待。更糟糕的是，虽然情况很少，但确实发现了为了利益的劫持行为，比如流量盈利
+**是为了提高DNS查询性能**？也声称是为了提高DNS查询性能和用户体验。在本文中确实发现请求复制降低了DNS查询的RTT，而请求重定向的影响不确定。例如表7中，对于请求重定向，性能的不确定性比性能提高的概率更大。   
+结论：DNS拦截只能有限度的ᨀ高DNS查询性能   
+**减少财务结算**：对于ISP，尤其小规模的，都希望降低网络中流量交换的开销，例如请求重定向就满足了减少out-of-band流量的需求，因此在表7中一些AS中就观察到了这种拦截。   
+结论：财政问题是主要动机，而且通过一家中国大型ISP得到了确认
+# 总结
+包括中国移动在内，8.5%的AS中发现有拦截行为。   
+自中国发向Google公共DNS的UDP协议DNS包更易被拦截；而且A类型的请求被拦截的概率比其他类型较高。   
+请求复制降低了DNS请求的RTT，但请求重定向对RTT的影响不确定。   
+本文推测动机包括财政、ᨀ高DNS查询性能，而不是ᨀ高DNS安全。   
