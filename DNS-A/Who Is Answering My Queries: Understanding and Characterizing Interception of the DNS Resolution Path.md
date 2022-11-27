@@ -19,7 +19,7 @@
 • 用UDP封装的DNS请求以及类型为A的DNS请求容易被拦截；   
 • 拦截者用到的DNS服务器安装了过期的软件且容易遭受DOS攻击，另外，57%的DNS服务器不支持DNSSEC；   
 • DNS拦截对用户的上网体验并没有显著提升。甚至，用UDP封装的DNS请求，15.37%当发往Public DNS Servers比发往代替DNS服务器的响应更快。   
-
+ 
 # 威胁模型
 正常响应   
 ![image](https://user-images.githubusercontent.com/49114842/203557525-e53f7f14-71e7-4b4a-a2e6-edcb8ef50d0f.png)    
